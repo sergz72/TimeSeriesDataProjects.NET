@@ -27,10 +27,9 @@ internal sealed class Db: TimeSeriesData<SensorData>
     {
         return date;
     }
-
-    internal void AggregateAll()
+    
+    internal void Save(IDbConfiguration configuration, string dataFolderPath)
     {
-        foreach (var v in Load(0, int.MaxValue))
-            v.Item2.Aggregate();
+        SaveAll(configuration.GetMainDataSource(), Path.Combine(dataFolderPath, configuration.DatesSuffix));
     }
 }

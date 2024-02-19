@@ -71,6 +71,6 @@ internal sealed class Db: TimeSeriesData<FinanceRecord>
         _accounts.Save(configuration.GetAccountsSource(), dataFolderPath);
         _categories.Save(configuration.GetCategoriesSource(), dataFolderPath);
         _subcategories.Save(configuration.GetSubcategoriesSource(), dataFolderPath);
-        SaveAll(configuration.GetMainDataSource(), dataFolderPath);
+        SaveAll(configuration.GetMainDataSource(), Path.Combine(dataFolderPath, "dates"));
     }
 }
