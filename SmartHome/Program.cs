@@ -20,12 +20,6 @@ try
             db.LoadAll();
             stopwatch.Stop();
             Console.WriteLine("Database loaded in {0} ms", stopwatch.ElapsedMilliseconds);
-            stopwatch.Reset();
-            stopwatch.Start();
-            //db.Test(1000);
-            db.AggregateAll();
-            stopwatch.Stop();
-            Console.WriteLine("Data aggregation finished in {0} ms", stopwatch.ElapsedMilliseconds);
             break;
         default:
             Usage();

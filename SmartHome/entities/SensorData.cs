@@ -1,3 +1,4 @@
+using System.Runtime.Intrinsics;
 using TimeSeriesData;
 
 namespace SmartHome.entities;
@@ -29,7 +30,20 @@ internal struct AggregatedData
     }
 }
 
-internal class SensorData: ILoader<SensorDataItem>
+internal class SensorDataItemComparer : IEqualityComparer<SensorDataItem>
+{
+    public bool Equals(SensorDataItem? x, SensorDataItem? y)
+    {
+        return x?.EventTime == y?.EventTime;
+    }
+
+    public int GetHashCode(SensorDataItem obj)
+    {
+        return obj.EventTime.GetHashCode();
+    }
+}
+
+internal class SensorData: IBinaryData<SensorData>
 {
     // map sensorId -> map eventTime-> data type map
     internal readonly Dictionary<int, Dictionary<int, Dictionary<string, int>>> Data;
@@ -41,20 +55,19 @@ internal class SensorData: ILoader<SensorDataItem>
         Data = new Dictionary<int, Dictionary<int, Dictionary<string, int>>>();
         Aggregated = new Dictionary<int, Dictionary<string, AggregatedData>>();
     }
-    
-    public void Load<T>(string fileName, IDatedSource<T> source, int date)
+
+    public SensorData(Dictionary<int, List<SensorDataItem>> data)
     {
-        var sensorId = int.Parse(Path.GetFileNameWithoutExtension(fileName));
-        var rawData = source.Load(fileName, date);
-        if (!Data.TryGetValue(sensorId, out var data))
-        {
-            data = new Dictionary<int, Dictionary<string, int>>();
-            Data[sensorId] = data;
-        }
-        foreach (var d in rawData)
-            data[d.EventTime] = d.Data;
+        Data = data.Select(kv => (kv.Key, ConvertList(kv.Value.Distinct(new SensorDataItemComparer()))))
+            .ToDictionary();
+        Aggregate();
     }
 
+    private static Dictionary<int, Dictionary<string, int>> ConvertList(IEnumerable<SensorDataItem> list)
+    {
+        return list.Select(item => (item.EventTime, item.Data)).ToDictionary();
+    }
+    
     internal void Aggregate()
     {
         Aggregated = Data.Select(v => (v.Key, Aggregate(v.Value))).ToDictionary();
@@ -81,19 +94,8 @@ internal class SensorData: ILoader<SensorDataItem>
         }
         return dict;
     }
-}
 
-internal class SensorDataItem: IIdentifiable, IBinaryData<SensorDataItem>
-{
-    public int EventTime { get; set; }
-    public Dictionary<string, int> Data { get; set; }
-    
-    public int GetId()
-    {
-        return EventTime;
-    }
-
-    public static SensorDataItem Create(BinaryReader stream)
+    public static SensorData Create(BinaryReader stream)
     {
         throw new NotImplementedException();
     }
@@ -101,5 +103,16 @@ internal class SensorDataItem: IIdentifiable, IBinaryData<SensorDataItem>
     public void Save(BinaryWriter stream)
     {
         throw new NotImplementedException();
+    }
+}
+
+internal class SensorDataItem: IIdentifiable
+{
+    public int EventTime { get; set; }
+    public Dictionary<string, int> Data { get; set; }
+    
+    public int GetId()
+    {
+        return EventTime;
     }
 }

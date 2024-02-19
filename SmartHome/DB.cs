@@ -6,12 +6,12 @@ namespace SmartHome;
 internal interface IDbConfiguration
 {
     string DatesSuffix { get; }
-    IDatedSource<SensorData, List<SensorDataItem>> GetMainDataSource();
+    IDatedSource<SensorData> GetMainDataSource();
     IDataSource<List<Location>> GetLocationsSource();
     IDataSource<List<Sensor>> GetSensorsSource();
 }
 
-internal sealed class Db: TimeSeriesData<SensorData, SensorDataItem>
+internal sealed class Db: TimeSeriesData<SensorData>
 {
     private readonly Locations _locations;
     private readonly Sensors _sensors;

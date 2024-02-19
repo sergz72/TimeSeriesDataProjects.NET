@@ -25,7 +25,7 @@ internal class JsonDbConfiguration: IDbConfiguration
 
 internal class JsonDatedSource : IDatedSource<SensorData>
 {
-    private JsonListLoader<SensorDataItem> _loader = new(null);
+    private readonly JsonListLoader<SensorDataItem> _loader = new(null);
 
     public SensorData Load(IEnumerable<DbFileWithDate> files)
     {
