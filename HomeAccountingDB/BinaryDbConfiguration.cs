@@ -48,7 +48,7 @@ public sealed class BinaryDatedSource(ICryptoProcessor processor) : IDatedSource
 
     public int GetDate(DbFileInfo fi)
     {
-        return int.Parse(Path.GetFileNameWithoutExtension(fi.FileName));
+        return int.Parse(Path.GetFileNameWithoutExtension(fi.FileName)) * 100;
     }
 
     public IEnumerable<DbFileWithDate> GetFileNames(string dataFolderPath, int key)

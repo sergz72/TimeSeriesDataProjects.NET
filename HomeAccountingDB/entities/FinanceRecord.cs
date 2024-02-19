@@ -310,13 +310,13 @@ public struct FinOpProperty: IBinaryData<FinOpProperty>
 
     public static FinOpProperty Create(BinaryReader stream)
     {
-        var n = stream.ReadInt32();
+        var n = stream.ReadInt64();
         var s = stream.ReadString();
         var d = stream.ReadInt32();
         var code = (FinOpPropertyCode)stream.ReadByte();
         return new FinOpProperty
         {
-            NumericValue = n == int.MaxValue ? null : n,
+            NumericValue = n == long.MaxValue ? null : n,
             StringValue = s.Length == 0 ? null : s,
             DateValue = d == 0 ? null : d,
             PropertyCode = code
@@ -325,7 +325,7 @@ public struct FinOpProperty: IBinaryData<FinOpProperty>
 
     public void Save(BinaryWriter stream)
     {
-        stream.Write(NumericValue ?? int.MaxValue);
+        stream.Write(NumericValue ?? long.MaxValue);
         stream.Write(StringValue ?? "");
         stream.Write(DateValue ?? 0);
         stream.Write((byte)PropertyCode);
