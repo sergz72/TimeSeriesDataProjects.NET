@@ -35,6 +35,7 @@ internal sealed class Db: TimeSeriesData<FinanceRecord>
             else
                 kv.Item2.Totals = changes.BuildTotals();
             kv.Item2.UpdateChanges(changes, _accounts, _subcategories);
+            MarkAsModified(kv.key);
         }
     }
     

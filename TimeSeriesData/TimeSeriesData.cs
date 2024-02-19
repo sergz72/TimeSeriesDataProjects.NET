@@ -166,10 +166,16 @@ public abstract class TimeSeriesData<T>(string dataFolderPath, IDatedSource<T> s
         var v = new LruItem<T>(value);
         _data[idx] = v;
         LruAdd(idx, v.LastAccessTime);
+        if (value == null) return;
         ActiveItems++;
         _modified.Add(idx);
     }
 
+    public void MarkAsModified(int idx)
+    {
+        _modified.Add(idx);
+    }
+    
     private void Cleanup()
     {
         while (ActiveItems >= _maxItems)
