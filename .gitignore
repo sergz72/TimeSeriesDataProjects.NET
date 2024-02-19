@@ -1,0 +1,7 @@
+.idea/
+.vs/
+obj/
+bin/
+*.DotSettings.user
+.DS_Store
+*.csproj.user
