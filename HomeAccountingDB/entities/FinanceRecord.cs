@@ -179,8 +179,11 @@ public sealed class FinanceOperation: IBinaryData<FinanceOperation>
         var account = stream.ReadInt32();
         var count = stream.ReadInt32();
         var properties = new List<FinOpProperty>();
-        while (count-- > 0)
+        while (count > 0)
+        {
             properties.Add(FinOpProperty.Create(stream));
+            count--;
+        }
         return new FinanceOperation
         {
             Date = date,

@@ -68,9 +68,9 @@ internal sealed class Db: TimeSeriesData<FinanceRecord>
 
     internal void Save(IDbConfiguration configuration, string dataFolderPath)
     {
-        _accounts.Save(configuration.GetAccountsSource(), dataFolderPath);
-        _categories.Save(configuration.GetCategoriesSource(), dataFolderPath);
-        _subcategories.Save(configuration.GetSubcategoriesSource(), dataFolderPath);
+        _accounts.SaveAll(configuration.GetAccountsSource(), dataFolderPath);
+        _categories.SaveAll(configuration.GetCategoriesSource(), dataFolderPath);
+        _subcategories.SaveAll(configuration.GetSubcategoriesSource(), dataFolderPath);
         SaveAll(configuration.GetMainDataSource(), Path.Combine(dataFolderPath, "dates"));
     }
 }

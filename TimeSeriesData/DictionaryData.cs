@@ -53,6 +53,12 @@ public class DictionaryData<T> where T: IIdentifiable
         Modified = false;
     }
 
+    public void SaveAll(IDataSource<List<T>> source, string dataFolderPath)
+    {
+        source.Save(Data.Select(kv => kv.Value).ToList(), Path.Combine(dataFolderPath, FileName), true);
+        Modified = false;
+    }
+
     public void Save()
     {
         Save(Source, DataFolderPath);

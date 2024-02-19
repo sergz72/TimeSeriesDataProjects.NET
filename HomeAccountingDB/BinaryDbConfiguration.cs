@@ -4,9 +4,9 @@ using TimeSeriesData;
 
 namespace HomeAccountingDB;
 
-public sealed class BinaryDbConfiguration(byte[] aesKey): IDbConfiguration
+public sealed class BinaryDbConfiguration(string aesKeyFile): IDbConfiguration
 {
-    private readonly byte[] _aesKey = aesKey;
+    private readonly byte[] _aesKey = AesProcessor.LoadKeyFile(aesKeyFile);
     
     public IDatedSource<FinanceRecord> GetMainDataSource()
     {
@@ -33,7 +33,7 @@ public sealed class BinaryDatedSource(ICryptoProcessor processor) : IDatedSource
 {
     private readonly BinaryClassLoader<FinanceRecord> _loader = new(processor);
 
-    private static string GetFileName(string dataFolderPath, int key) => dataFolderPath + key + ".bin";
+    private static string GetFileName(string dataFolderPath, int key) => Path.Combine(dataFolderPath, key + ".bin");
 
     public FinanceRecord Load(IEnumerable<DbFileWithDate> files)
     {
