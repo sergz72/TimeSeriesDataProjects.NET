@@ -170,6 +170,11 @@ public sealed class FinanceOperation: IBinaryData<FinanceOperation>
     [JsonPropertyName("accountId")] public int Account { get; set; }
     [JsonPropertyName("finOpProperies")] public List<FinOpProperty>? FinOpProperties { get; set; }
 
+    public static FinanceOperation Create(byte[] buffer, int offset)
+    {
+        return Create(new BinaryReader(new MemoryStream(buffer, offset, buffer.Length - offset)));
+    }
+    
     public static FinanceOperation Create(BinaryReader stream)
     {
         var date = stream.ReadInt32();

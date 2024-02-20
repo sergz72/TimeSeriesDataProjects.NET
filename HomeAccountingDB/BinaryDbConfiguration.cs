@@ -4,28 +4,26 @@ using TimeSeriesData;
 
 namespace HomeAccountingDB;
 
-public sealed class BinaryDbConfiguration(string aesKeyFile): IDbConfiguration
+public sealed class BinaryDbConfiguration(byte[] aesKey): IDbConfiguration
 {
-    private readonly byte[] _aesKey = AesProcessor.LoadKeyFile(aesKeyFile);
-    
     public IDatedSource<FinanceRecord> GetMainDataSource()
     {
-        return new BinaryDatedSource(new AesProcessor(_aesKey));
+        return new BinaryDatedSource(new AesProcessor(aesKey));
     }
 
     public IDataSource<List<Account>> GetAccountsSource()
     {
-        return new BinaryListLoader<Account>(new AesProcessor(_aesKey));
+        return new BinaryListLoader<Account>(new AesProcessor(aesKey));
     }
 
     public IDataSource<List<Category>> GetCategoriesSource()
     {
-        return new BinaryListLoader<Category>(new AesProcessor(_aesKey));
+        return new BinaryListLoader<Category>(new AesProcessor(aesKey));
     }
 
     public IDataSource<List<Subcategory>> GetSubcategoriesSource()
     {
-        return new BinaryListLoader<Subcategory>(new AesProcessor(_aesKey));
+        return new BinaryListLoader<Subcategory>(new AesProcessor(aesKey));
     }
 }
 

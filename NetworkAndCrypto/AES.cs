@@ -5,7 +5,8 @@ namespace NetworkAndCrypto;
 
 public sealed class AesProcessor: ICryptoProcessor
 {
-    private const int IvLength = 16;
+    public const int IvLength = 16;
+    public const int KeyLength = 32;
     private readonly Aes _aes;
 
     public AesProcessor(byte[] key)
@@ -37,8 +38,35 @@ public sealed class AesProcessor: ICryptoProcessor
     public static byte[] LoadKeyFile(string fileName)
     {
         var bytes = File.ReadAllBytes(fileName);
-        if (bytes.Length != 32)
+        if (bytes.Length != KeyLength)
             throw new InvalidDataException("wrong file size");
         return bytes;
+    }
+}
+
+public sealed class AesProcessorWithIv: ICryptoProcessor
+{
+    private readonly ICryptoTransform _encryptor;
+    private readonly ICryptoTransform _decryptor;
+
+    public AesProcessorWithIv(byte[] key, byte[]iv)
+    {
+        var aes = Aes.Create();
+        aes.IV = iv;
+        aes.Mode = CipherMode.CBC;
+        aes.Padding = PaddingMode.PKCS7;
+        aes.Key = key;
+        _encryptor = aes.CreateEncryptor();
+        _decryptor = aes.CreateDecryptor();
+    }
+    
+    public byte[] Encrypt(byte[] bytes)
+    {
+        return _encryptor.TransformFinalBlock(bytes, 0, bytes.Length);
+    }
+
+    public byte[] Decrypt(byte[] bytes)
+    {
+        return _decryptor.TransformFinalBlock(bytes, 0, bytes.Length);
     }
 }

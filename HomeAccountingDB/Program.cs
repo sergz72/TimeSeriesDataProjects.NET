@@ -2,6 +2,7 @@
 using HomeAccountingDB;
 using NetworkAndCrypto;
 
+const int MaxTimeEntries = 1000000;
 var l = args.Length;
 
 if (l is < 3 or > 4)
@@ -21,25 +22,25 @@ try
                 if (args.Length != 3)
                     Usage();
                 else
-                    Test(new JsonDbConfiguration(), args[2], true);
+                    Test(new JsonDbConfiguration(), args[2], true, MaxTimeEntries);
                 break;
             case "test":
                 if (args.Length != 4)
                     Usage();
                 else
-                    Test(new BinaryDbConfiguration(args[2]), args[3], false);
+                    Test(new BinaryDbConfiguration(AesProcessor.LoadKeyFile(args[2])), args[3], false, MaxTimeEntries);
                 break;
             case "migrate":
                 if (args.Length != 4)
                     Usage();
                 else
-                    Migrate(args[2], args[0], args[3]);
+                    Migrate(args[2], args[0], args[3], MaxTimeEntries);
                 break;
             case "server":
                 if (args.Length != 4)
                     Usage();
                 else
-                    StartServer(args[0], int.Parse(args[2]), args[3]);
+                    StartServer(args[0], int.Parse(args[2]), args[3], MaxTimeEntries);
                 break;
             default:
                 Usage();
@@ -59,24 +60,18 @@ catch (Exception e)
 
 return;
 
-void StartServer(string dataFolderPath, int port, string rsaKeyFile)
+void StartServer(string dataFolderPath, int port, string rsaKeyFile, int maxTimeEntries)
 {
-    var stopwatch = new Stopwatch();
-    stopwatch.Start();
-    var db = new Db(dataFolderPath, new JsonDbConfiguration(), 1000000);
-    db.LoadAll();
-    stopwatch.Stop();
-    Console.WriteLine("Database loaded in {0} ms", stopwatch.ElapsedMilliseconds);
-    var server = new TcpServer(port, rsaKeyFile, new PacketHandler(db));
+    var server = new TcpServer(port, rsaKeyFile, new AesKeyPacketHandler(new CommandDecoder(dataFolderPath, maxTimeEntries)));
     Console.WriteLine("Starting server on port {0}", port);
     server.Start();
 }
 
-void Migrate(string from, string to, string aesKeyFile)
+void Migrate(string from, string to, string aesKeyFile, int maxTimeEntries)
 {
     var stopwatch = new Stopwatch();
     stopwatch.Start();
-    var db = new Db(from, new JsonDbConfiguration(), 1000000);
+    var db = new Db(from, new JsonDbConfiguration(), maxTimeEntries);
     db.LoadAll();
     stopwatch.Stop();
     Console.WriteLine("Database loaded in {0} ms", stopwatch.ElapsedMilliseconds);
@@ -87,16 +82,16 @@ void Migrate(string from, string to, string aesKeyFile)
     Console.WriteLine("Totals calculation finished in {0} us", stopwatch.Elapsed.TotalMicroseconds);
     stopwatch.Reset();
     stopwatch.Start();
-    db.Save(new BinaryDbConfiguration(aesKeyFile), to);
+    db.Save(new BinaryDbConfiguration(AesProcessor.LoadKeyFile(aesKeyFile)), to);
     stopwatch.Stop();
     Console.WriteLine("Database saved in {0} ms", stopwatch.ElapsedMilliseconds);
 }
 
-void Test(IDbConfiguration configuration, string date, bool calculateTotals)
+void Test(IDbConfiguration configuration, string date, bool calculateTotals, int maxTimeEntries)
 {
     var stopwatch = new Stopwatch();
     stopwatch.Start();
-    var db = new Db(args[0], configuration, 1000000);
+    var db = new Db(args[0], configuration, maxTimeEntries);
     stopwatch.Stop();
     Console.WriteLine("Database loaded in {0} ms", stopwatch.ElapsedMilliseconds);
     if (calculateTotals)
