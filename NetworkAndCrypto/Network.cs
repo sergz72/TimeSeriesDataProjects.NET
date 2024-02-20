@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
+using TimeSeriesData;
 
 namespace NetworkAndCrypto;
 
@@ -33,6 +34,26 @@ public class PacketHandler(ICommandDecoder decoder) : IPacketHandler
     {
         var command = decoder.Build(data);
         return command.ExecuteCommand();
+    }
+
+    public static byte[] BuildResponse<T>(Func<T> func) where T: IBinaryData<T>
+    {
+        using var stream = new MemoryStream();
+        using var writer = new BinaryWriter(stream);
+        try
+        {
+            var result = func();
+            writer.Write((byte)0);
+            result.Save(writer);
+        }
+        catch (Exception e)
+        {
+            writer.Write((byte)1);
+            writer.Write(e.Message);
+        }
+        writer.Flush();
+        stream.Flush();
+        return stream.GetBuffer();
     }
 }
 

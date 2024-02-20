@@ -11,6 +11,19 @@ internal interface IDbConfiguration
     IDataSource<List<Subcategory>> GetSubcategoriesSource();
 }
 
+internal struct Dicts : IBinaryData<Dicts>
+{
+    public static Dicts Create(BinaryReader stream)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void Save(BinaryWriter stream)
+    {
+        throw new NotImplementedException();
+    }
+}
+
 internal sealed class Db: TimeSeriesData<FinanceRecord>
 {
     private readonly Accounts _accounts;
@@ -73,5 +86,20 @@ internal sealed class Db: TimeSeriesData<FinanceRecord>
         _categories.SaveAll(configuration.GetCategoriesSource(), dataFolderPath);
         _subcategories.SaveAll(configuration.GetSubcategoriesSource(), dataFolderPath);
         SaveAll(configuration.GetMainDataSource(), Path.Combine(dataFolderPath, "dates"));
+    }
+
+    internal Dicts GetDicts()
+    {
+        return new Dicts();
+    }
+    
+    internal Dicts GetOps(int date)
+    {
+        return new Dicts();
+    }
+
+    internal Dicts DeleteOperation(int date, int id)
+    {
+        return new Dicts();
     }
 }

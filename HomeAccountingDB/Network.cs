@@ -17,8 +17,8 @@ internal class CommandDecoder(string dataFolderPath, int maxTimeEntries): IComma
 {
     private Db? _database;
     private DbCommand _command = DbCommand.Dicts;
-    private int _operationId = 0;
-    private int _date1 = 0;
+    private int _operationId;
+    private int _date1;
     private FinanceOperation? _operation;
     
     public ICommandDecoder Build(byte[] command)
@@ -72,23 +72,15 @@ internal class CommandDecoder(string dataFolderPath, int maxTimeEntries): IComma
 
     public byte[]? ExecuteCommand()
     {
-        switch (_command)
+        return _command switch
         {
-            case DbCommand.Dicts:
-                //var dicts = _database!.GetDicts();
-                //return dicts
-                break;
-            case DbCommand.GetOps:
-                break;
-            case DbCommand.ModifyOp:
-                break;
-            case DbCommand.AddOp:
-                break;
-            case DbCommand.DeleteOp:
-                break;
-            default:
-                throw new NetworkException("unknown database command");
-        }
+            DbCommand.Dicts => PacketHandler.BuildResponse(() => _database!.GetDicts()),
+            DbCommand.GetOps => PacketHandler.BuildResponse(() => _database!.GetOps(_date1)),
+            DbCommand.ModifyOp => PacketHandler.BuildResponse(() => _database!.GetDicts()),
+            DbCommand.AddOp => PacketHandler.BuildResponse(() => _database!.GetDicts()),
+            DbCommand.DeleteOp => PacketHandler.BuildResponse(() => _database!.DeleteOperation(_date1, _operationId)),
+            _ => throw new NetworkException("unknown database command")
+        };
     }
 
     public void DatabaseInit(byte[] aesKey)
