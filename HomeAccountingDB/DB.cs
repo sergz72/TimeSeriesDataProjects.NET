@@ -24,6 +24,39 @@ internal struct Dicts : IBinaryData<Dicts>
     }
 }
 
+internal struct OpsAndChanges : IBinaryData<OpsAndChanges>
+{
+    internal List<FinanceOperation> Operations;
+    internal FinanceChanges Changes;
+
+    internal OpsAndChanges(FinanceRecord? record, int date, Accounts accounts, Subcategories subcategories)
+    {
+        if (record != null)
+        {
+            Operations = record.Operations.Where(op => op.Date == date).ToList();
+            Changes = new FinanceChanges(record.Totals);
+            record.UpdateChanges(Changes, 0, date - 1, accounts, subcategories);
+            Changes.ToNewChanges();
+            record.UpdateChanges(Changes, date, date, accounts, subcategories);
+        }
+        else
+        {
+            Operations = [];
+            Changes = new FinanceChanges();
+        }
+    }
+    
+    public static OpsAndChanges Create(BinaryReader stream)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void Save(BinaryWriter stream)
+    {
+        throw new NotImplementedException();
+    }
+}
+
 internal sealed class Db: TimeSeriesData<FinanceRecord>
 {
     private readonly Accounts _accounts;
@@ -48,17 +81,22 @@ internal sealed class Db: TimeSeriesData<FinanceRecord>
             else
                 kv.Item2.Totals = changes.BuildTotals();
             kv.Item2.UpdateChanges(changes, _accounts, _subcategories);
-            MarkAsModified(kv.key);
+            if (kv.key != from)
+                MarkAsModified(kv.key);
         }
+    }
+
+    public OpsAndChanges GetOpsAndChanges(int date)
+    {
+        return new OpsAndChanges(Load(date), date, _accounts, _subcategories);
     }
     
     internal void PrintChanges(int date)
     {
         if (date == 0)
             date = int.MaxValue;
-        var record = Load(date);
-        var changes = record!.BuildChanges(_accounts, _subcategories);
-        foreach (var change in changes.Changes)
+        var opsAndChanges = GetOpsAndChanges(date);
+        foreach (var change in opsAndChanges.Changes.Changes)
         {
             Console.WriteLine("{0} {1} {2} {3} {4}",
                 _accounts.Get(change.Key).Name,

@@ -33,18 +33,17 @@ public sealed class FinanceRecord: IBinaryData<FinanceRecord>
         Operations = Enumerable.Range(0, operations).Select(_ => new FinanceOperation()).ToList();
     }
     
+    internal void UpdateChanges(FinanceChanges changes, int from, int to, Accounts accounts, Subcategories subcategories)
+    {
+        foreach (var op in Operations.Where(op => op.Date >= from && op.Date <= to))
+            op.UpdateChanges(changes, accounts, subcategories);
+    }
+
     internal void UpdateChanges(FinanceChanges changes, Accounts accounts, Subcategories subcategories)
     {
         Operations.ForEach(op => op.UpdateChanges(changes, accounts, subcategories));
     }
     
-    internal FinanceChanges BuildChanges(Accounts accounts, Subcategories subcategories)
-    {
-        var changes = new FinanceChanges(Totals);
-        Operations.ForEach(op => op.UpdateChanges(changes, accounts, subcategories));
-        return changes;
-    }
-
     public static FinanceRecord Create(BinaryReader stream)
     {
         var totals = ReadTotals(stream);
@@ -102,6 +101,11 @@ internal class FinanceChanges
 {
     internal readonly Dictionary<int, FinanceChange> Changes;
 
+    internal FinanceChanges()
+    {
+        Changes = new Dictionary<int, FinanceChange>();
+    }
+    
     internal FinanceChanges(Dictionary<int, long> totals)
     {
         Changes = totals
@@ -131,11 +135,17 @@ internal class FinanceChanges
             .Select(kv => (kv.Key, kv.Value.GetEndSumma()))
             .ToDictionary();
     }
+
+    public void ToNewChanges()
+    {
+        foreach (var kv in Changes)
+            kv.Value.ToEndSumma();
+    }
 }
 
 internal class FinanceChange
 {
-    internal readonly long Summa;
+    internal long Summa;
     internal long Income;
     internal long Expenditure;
 
@@ -155,6 +165,12 @@ internal class FinanceChange
     internal long GetEndSumma()
     {
         return Summa + Income - Expenditure;
+    }
+
+    public void ToEndSumma()
+    {
+        Summa = GetEndSumma();
+        Income = Expenditure = 0;
     }
 }
 
