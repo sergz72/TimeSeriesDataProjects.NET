@@ -110,7 +110,7 @@ internal sealed class Db: TimeSeriesData<FinanceRecord>
     internal void Test(int keys)
     {
         for (var i = 0; i < keys; i++)
-            Add(i, new FinanceRecord(200));
+            Add(i, new FinanceRecord(200), false);
     }
 
     protected override int CalculateKey(int date)

@@ -28,50 +28,94 @@ public interface IDatedSource<T>
 
 internal class LruItem<T> where T: class
 {
+    internal int Idx;
     internal T? Value;
-    internal long LastAccessTime;
+    internal LruItem<T>? Prev;
+    internal LruItem<T>? Next;
 
-    internal LruItem()
+    internal LruItem(int idx)
     {
+        Idx = idx;
         Value = null;
-        LastAccessTime = 0;
+        Prev = Next = null;
     }
     
-    internal LruItem(T? value)
+    internal LruItem(int idx, T? value)
     {
-        Set(value);
+        Idx = idx;
+        Value = value;
+    }
+}
+
+internal class Lru<T> where T: class
+{
+    private LruItem<T>? _head;
+    private LruItem<T>? _tail;
+    internal LruItem<T> Tail => _tail ?? throw new NullReferenceException("_tail is null");
+    internal int ActiveItems { get; private set; }
+
+    internal Lru()
+    {
+        _head = _tail = null;
     }
 
-    internal void Update()
+    internal void MoveToFront(LruItem<T> item)
     {
-        LastAccessTime = ((DateTimeOffset)DateTime.UtcNow).ToUnixTimeMilliseconds();
+        if (_head == item)
+            return;
+        Detach(item);
+        Add(item);
     }
-    
-    internal void Set(T? value)
+
+    internal void Add(LruItem<T> item)
     {
-        Value = value;
-        if (value != null)
-            Update();
+        ActiveItems++;
+        if (_head == null)
+        {
+            _head = _tail = item;
+            item.Prev = item.Next = null;
+            return;
+        }
+        var oldHead = _head;
+        _head = item;
+        oldHead.Prev = item;
+        item.Prev = null;
+        item.Next = oldHead;
+    }
+
+    private void Detach(LruItem<T> item)
+    {
+        if (item.Prev != null)
+            item.Prev.Next = item.Next;
+        else
+            _head = item.Next;
+        if (item.Next != null)
+            item.Next.Prev = item.Prev;
+        else
+            _tail = item.Prev;
+        ActiveItems--;
+    }
+
+    internal void DetachTail()
+    {
+        Detach(Tail);
     }
 }
 
 public abstract class TimeSeriesData<T>(string dataFolderPath, IDatedSource<T> source, int maxItems)
     where T : class, new()
 {
-    private SortedDictionary<int, LruItem<T>> _data = new();
-    private readonly IDatedSource<T> _source = source;
-    private readonly string _dataFolderPath = dataFolderPath;
-    private readonly SortedDictionary<long, HashSet<int>> _lastAccessTimeMap = new();
+    private readonly SortedDictionary<int, LruItem<T>> _data = new();
+    private readonly Lru<T> _lru = new();
     private readonly HashSet<int> _modified = [];
-    private readonly int _maxItems = maxItems;
-    public int ActiveItems { get; private set; }
+    public int ActiveItems => _lru.ActiveItems;
 
     public void LoadAll()
     {
         foreach (var (key, t) in GetFileList().Aggregate(
                 new Dictionary<int, List<DbFileWithDate>>(), (acc, fileInfo) =>
                 {
-                    var date = _source.GetDate(fileInfo);
+                    var date = source.GetDate(fileInfo);
                     var key = CalculateKey(date);
                     var dbFile = new DbFileWithDate(fileInfo.FileName, date);
                     if (!acc.TryGetValue(key, out var value))
@@ -81,9 +125,9 @@ public abstract class TimeSeriesData<T>(string dataFolderPath, IDatedSource<T> s
                     }
                     value.Add(dbFile);
                     return acc;
-                }).Select(kv => (kv.Key, _source.Load(kv.Value))))
+                }).Select(kv => (kv.Key, source.Load(kv.Value))))
         {
-            Add(key, t);
+            Add(key, t, false);
         }
     }
 
@@ -91,7 +135,7 @@ public abstract class TimeSeriesData<T>(string dataFolderPath, IDatedSource<T> s
     {
         foreach (var fileInfo in GetFileList())
         {
-            var date = _source.GetDate(fileInfo);
+            var date = source.GetDate(fileInfo);
             var key = CalculateKey(date);
             Add(key, null);
         }
@@ -125,50 +169,27 @@ public abstract class TimeSeriesData<T>(string dataFolderPath, IDatedSource<T> s
     {
         if (t.Value != null)
         {
-            var prevAccessTime = t.LastAccessTime;
-            t.Update();
-            LruUpdate(key, prevAccessTime, t.LastAccessTime);
+            _lru.MoveToFront(t);
             return t.Value;
         }
         
         Cleanup();
-        var v = _source.Load(_source.GetFileNames(_dataFolderPath, key));
-        t.Set(v);
-        LruAdd(key, t.LastAccessTime);
-        ActiveItems++;
+        var v = source.Load(source.GetFileNames(dataFolderPath, key));
+        t.Value = v;
+        _lru.Add(t);
 
         return v;
     }
-
-    private void LruAdd(int key, long newLastAccessTime)
-    {
-        if (_lastAccessTimeMap.TryGetValue(newLastAccessTime, out var items))
-        {
-            items.Add(key);
-        }
-        else
-        {
-            _lastAccessTimeMap[newLastAccessTime] = [key];
-        }
-    }
     
-    private void LruUpdate(int key, long prevLastAccessTime, long newLastAccessTime)
-    {
-        if (prevLastAccessTime == newLastAccessTime)
-            return;
-        _lastAccessTimeMap[prevLastAccessTime].Remove(key);
-        LruAdd(key, newLastAccessTime);
-    }
-
-    public void Add(int idx, T? value)
+    public void Add(int idx, T? value, bool modified = true)
     {
         Cleanup();
-        var v = new LruItem<T>(value);
+        var v = new LruItem<T>(idx, value);
         _data[idx] = v;
-        LruAdd(idx, v.LastAccessTime);
         if (value == null) return;
-        ActiveItems++;
-        _modified.Add(idx);
+        _lru.Add(v);
+        if (modified)
+            _modified.Add(idx);
     }
 
     public void MarkAsModified(int idx)
@@ -178,47 +199,34 @@ public abstract class TimeSeriesData<T>(string dataFolderPath, IDatedSource<T> s
     
     private void Cleanup()
     {
-        while (ActiveItems >= _maxItems)
-            Cleanup(_lastAccessTimeMap.First());
+        while (ActiveItems >= maxItems)
+        {
+            var item = _lru.Tail;
+            Save(item.Idx, item.Value!);
+            _lru.DetachTail();
+        }
     }
-
-    private void Cleanup(KeyValuePair<long, HashSet<int>> kv)
-    {
-        foreach (var key in kv.Value)
-            Cleanup(key);
-
-        _lastAccessTimeMap.Remove(kv.Key);
-    }
-
-    private void Cleanup(int key)
-    {
-        var v = _data[key];
-        _lastAccessTimeMap[v.LastAccessTime].Remove(key);
-        Save(key, v.Value!);
-        v.Set(null);
-        ActiveItems--;
-    }
-
+    
     private void Save(int key, T value)
     {
         if (!_modified.Contains(key)) return;
-        _source.Save(value, _dataFolderPath, key);
+        source.Save(value, dataFolderPath, key);
         _modified.Remove(key);
     }
 
     public void Save()
     {
         foreach (var key in _modified)
-            _source.Save(_data[key].Value!, _dataFolderPath, key);
+            source.Save(_data[key].Value!, dataFolderPath, key);
         _modified.Clear();
     }
 
-    public void SaveAll(IDatedSource<T> source, string dataFolderPath)
+    public void SaveAll(IDatedSource<T> target, string targetDataFolder)
     {
         foreach (var kv in _data)
         {
             if (kv.Value.Value != null)
-                source.Save(kv.Value.Value, dataFolderPath, kv.Key);
+                target.Save(kv.Value.Value, targetDataFolder, kv.Key);
         }
         _modified.Clear();
     }
@@ -233,7 +241,7 @@ public abstract class TimeSeriesData<T>(string dataFolderPath, IDatedSource<T> s
     
     private IEnumerable<DbFileInfo> GetFileList(string directory = "")
     {
-        var path = Path.Combine(_dataFolderPath, directory);
+        var path = Path.Combine(dataFolderPath, directory);
         return Directory.EnumerateFiles(path)
             .Select(file => new DbFileInfo(directory, file))
             .Concat(Directory.EnumerateDirectories(path)

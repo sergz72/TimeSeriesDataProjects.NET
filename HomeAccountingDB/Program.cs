@@ -5,7 +5,7 @@ using NetworkAndCrypto;
 const int MaxTimeEntries = 1000000;
 var l = args.Length;
 
-if (l is < 3 or > 4)
+if (l is < 2 or > 4)
 {
     Usage();
     return;
@@ -29,6 +29,12 @@ try
                     Usage();
                 else
                     Test(new BinaryDbConfiguration(AesProcessor.LoadKeyFile(args[2])), args[3], false, MaxTimeEntries);
+                break;
+            case "test_lru":
+                if (args.Length != 2)
+                    Usage();
+                else
+                    TestLru();
                 break;
             case "migrate":
                 if (args.Length != 4)
@@ -67,6 +73,17 @@ void StartServer(string dataFolderPath, int port, string rsaKeyFile, int maxTime
     server.Start();
 }
 
+void TestLru()
+{
+    var stopwatch = new Stopwatch();
+    stopwatch.Start();
+    var db = new Db(args[0], new JsonDbConfiguration(), 500);
+    stopwatch.Stop();
+    Console.WriteLine("Database created in {0} ms", stopwatch.ElapsedMilliseconds);
+    db.Test(1000);
+    Console.WriteLine("Alive items count = {0}", db.ActiveItems);
+}
+
 void Migrate(string from, string to, string aesKeyFile, int maxTimeEntries)
 {
     var stopwatch = new Stopwatch();
@@ -92,11 +109,11 @@ void Test(IDbConfiguration configuration, string date, bool calculateTotals, int
     var stopwatch = new Stopwatch();
     stopwatch.Start();
     var db = new Db(args[0], configuration, maxTimeEntries);
-    stopwatch.Stop();
-    Console.WriteLine("Database loaded in {0} ms", stopwatch.ElapsedMilliseconds);
     if (calculateTotals)
     {
         db.LoadAll();
+        stopwatch.Stop();
+        Console.WriteLine("Database loaded in {0} ms", stopwatch.ElapsedMilliseconds);
         stopwatch.Reset();
         stopwatch.Start();
         db.CalculateTotals(0);
@@ -104,7 +121,11 @@ void Test(IDbConfiguration configuration, string date, bool calculateTotals, int
         Console.WriteLine("Totals calculation finished in {0} us", stopwatch.Elapsed.TotalMicroseconds);
     }
     else
+    {
         db.Init();
+        stopwatch.Stop();
+        Console.WriteLine("Database initialised in {0} ms", stopwatch.ElapsedMilliseconds);
+    }
     db.PrintChanges(int.Parse(date));
     Console.WriteLine("Alive items count = {0}", db.ActiveItems);
 }
