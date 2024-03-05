@@ -33,13 +33,6 @@ internal class LruItem<T> where T: class
     internal LruItem<T>? Prev;
     internal LruItem<T>? Next;
 
-    internal LruItem(int idx)
-    {
-        Idx = idx;
-        Value = null;
-        Prev = Next = null;
-    }
-    
     internal LruItem(int idx, T? value)
     {
         Idx = idx;
