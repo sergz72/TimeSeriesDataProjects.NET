@@ -98,7 +98,7 @@ internal class Lru<T> where T: class
 public abstract class TimeSeriesData<T>(string dataFolderPath, IDatedSource<T> source, int maxItems)
     where T : class, new()
 {
-    private readonly SortedDictionary<int, LruItem<T>> _data = new();
+    private readonly SortedList<int, LruItem<T>> _data = new();
     private readonly Lru<T> _lru = new();
     private readonly HashSet<int> _modified = [];
     public int ActiveItems => _lru.ActiveItems;
