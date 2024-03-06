@@ -5,9 +5,9 @@ public interface IIdentifiable
     int GetId();
 }
 
-public class DictionaryData<T> where T: IIdentifiable
+public class DictionaryData<T> where T: class, IIdentifiable
 {
-    protected readonly Dictionary<int, T> Data;
+    protected readonly ListDictionary<T> Data;
     protected readonly IDataSource<List<T>> Source;
     protected readonly string FileName;
     protected readonly string DataFolderPath;
@@ -18,7 +18,9 @@ public class DictionaryData<T> where T: IIdentifiable
         FileName = fileName;
         DataFolderPath = dataFolderPath;
         Source = source;
-        Data = source.Load(Path.Combine(dataFolderPath, fileName), true).Select(d => (d.GetId(), d)).ToDictionary();
+        Data = source.Load(Path.Combine(dataFolderPath, fileName), true)
+            .Select(d => (d.GetId(), d))
+            .ToListDictionary(2000);
         Modified = false;
     }
 
